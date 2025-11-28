@@ -99,6 +99,7 @@
             // Check previous sibling
             let sibling = current.previousSibling;
             while (sibling) {
+                if (sibling.nodeName === 'BR') return true;
                 if (hasVisibleText(sibling)) return false;
                 sibling = sibling.previousSibling;
             }
