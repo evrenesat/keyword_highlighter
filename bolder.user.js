@@ -78,13 +78,14 @@
 
     function hasVisibleText(node) {
         if (node.nodeType === Node.TEXT_NODE) {
-            return node.nodeValue.trim().length > 0;
+            // Check if node contains any letters (ASCII A-Z, a-z)
+            return /[a-zA-Z]/.test(node.nodeValue);
         }
         if (node.nodeType === Node.ELEMENT_NODE) {
             if (shouldSkipNode(node)) return false;
             // Use innerText to respect visibility, but be careful of performance.
             // For a userscript, correctness is key.
-            return node.innerText && node.innerText.trim().length > 0;
+            return node.innerText && /[a-zA-Z]/.test(node.innerText);
         }
         return false;
     }
