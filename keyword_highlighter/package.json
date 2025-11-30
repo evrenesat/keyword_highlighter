@@ -4,7 +4,8 @@
     "description": "Highlights uppercase and capitalized words.",
     "scripts": {
         "build": "node scripts/build.js",
-        "dev:firefox": "web-ext run --source-dir . --manifest manifest.firefox.json"
+        "dev:firefox": "cp manifest.firefox.json manifest.json && web-ext run --source-dir .",
+        "dev:chrome": "cp manifest.chrome.json manifest.json && \"/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing\" --user-data-dir=\"/tmp/chrome-test-profile\" --disable-extensions-except=\"$PWD\" --load-extension=\"$PWD\" --no-first-run"
     },
     "devDependencies": {
         "archiver": "^5.3.1",
