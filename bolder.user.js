@@ -32,6 +32,7 @@
         const CONFIG = {
             minUppercaseLen: 2,
             minCapitalizedLen: 3,
+            minWordsInBlock: 10,
             terminators: new Set(['.', '!', '?', '…', ':', ';']),
             blockTags: new Set([
                 'DIV', 'P', 'LI', 'TD', 'TH', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
@@ -183,6 +184,16 @@
             return true;
         }
 
+        function getWordCount(element) {
+            if (element.dataset.bolderWordCount) {
+                return parseInt(element.dataset.bolderWordCount, 10);
+            }
+            const text = element.innerText || '';
+            const count = text.trim().split(/\s+/).length;
+            element.dataset.bolderWordCount = count.toString();
+            return count;
+        }
+
         function processTextNode(textNode) {
             if (shouldSkipNode(textNode)) return;
 
@@ -190,6 +201,11 @@
             if (!text.trim()) return;
 
             const blockParent = getBlockParent(textNode);
+
+            // Check word count of the block
+            if (getWordCount(blockParent) < CONFIG.minWordsInBlock) {
+                return;
+            }
 
             // Cleanup existing ranges for this node
             for (const [range, registry] of activeRanges) {
