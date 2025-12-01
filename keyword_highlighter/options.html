@@ -33,12 +33,20 @@
                 <input type="number" id="minWordsInBlock" min="1" value="10">
             </div>
             <div class="setting-row">
-                <label for="bolderDarkenBg">Darken Background Color (CSS value):</label>
-                <input type="text" id="bolderDarkenBg" placeholder="rgba(0, 0, 0, 0.1)">
+                <label>Darken Background Color:</label>
+                <div class="color-control">
+                    <input type="color" id="bolderDarkenColor" title="Choose color">
+                    <input type="range" id="bolderDarkenOpacity" min="0" max="1" step="0.05" title="Opacity">
+                    <span id="bolderDarkenOpacityVal" title="Opacity value"></span>
+                </div>
             </div>
             <div class="setting-row">
-                <label for="bolderLightenBg">Lighten Background Color (CSS value):</label>
-                <input type="text" id="bolderLightenBg" placeholder="rgba(255, 255, 255, 0.25)">
+                <label>Lighten Background Color:</label>
+                <div class="color-control">
+                    <input type="color" id="bolderLightenColor" title="Choose color">
+                    <input type="range" id="bolderLightenOpacity" min="0" max="1" step="0.05" title="Opacity">
+                    <span id="bolderLightenOpacityVal" title="Opacity value"></span>
+                </div>
             </div>
         </div>
 
