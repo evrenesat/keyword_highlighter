@@ -31,7 +31,10 @@
     // --- Storage & Init ---
     const defaultSettings = {
         defaultEnabled: true,
-        siteList: []
+        siteList: [],
+        minWordsInBlock: 10,
+        bolderDarkenBg: 'rgba(0, 0, 0, 0.1)',
+        bolderLightenBg: 'rgba(255, 255, 255, 0.25)'
     };
 
     let isEnabled = false;
@@ -70,7 +73,9 @@
             const CONFIG = {
                 minUppercaseLen: 2,
                 minCapitalizedLen: 3,
-                minWordsInBlock: 10,
+                minUppercaseLen: 2,
+                minCapitalizedLen: 3,
+                minWordsInBlock: currentSettings.minWordsInBlock,
                 terminators: new Set(['.', '!', '?', '…', ':', ';']),
                 blockTags: new Set([
                     'DIV', 'P', 'LI', 'TD', 'TH', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
@@ -102,12 +107,12 @@
             const style = document.createElement('style');
             style.textContent = `
             ::highlight(bolder-darken) {
-                background-color: rgba(0, 0, 0, 0.1); /* Darken tint for light backgrounds */
+                background-color: ${currentSettings.bolderDarkenBg}; /* Darken tint for light backgrounds */
                 color: inherit;
                 text-decoration: none;
             }
             ::highlight(bolder-lighten) {
-                background-color: rgba(255, 255, 255, 0.25); /* Lighten tint for dark backgrounds */
+                background-color: ${currentSettings.bolderLightenBg}; /* Lighten tint for dark backgrounds */
                 color: inherit;
                 text-decoration: none;
             }
@@ -399,6 +404,34 @@
                 if (area === 'local') {
                     if (changes.defaultEnabled) currentSettings.defaultEnabled = changes.defaultEnabled.newValue;
                     if (changes.siteList) currentSettings.siteList = changes.siteList.newValue;
+                    if (changes.minWordsInBlock) {
+                        currentSettings.minWordsInBlock = changes.minWordsInBlock.newValue;
+                        CONFIG.minWordsInBlock = currentSettings.minWordsInBlock;
+                        // Re-run traversal to apply new word count limit
+                        if (isEnabled) {
+                            console.log('Bolder: minWordsInBlock changed, re-evaluating...');
+                            cleanupHighlights();
+                            traverse(document.body);
+                        }
+                    }
+                    if (changes.bolderDarkenBg || changes.bolderLightenBg) {
+                        if (changes.bolderDarkenBg) currentSettings.bolderDarkenBg = changes.bolderDarkenBg.newValue;
+                        if (changes.bolderLightenBg) currentSettings.bolderLightenBg = changes.bolderLightenBg.newValue;
+
+                        // Update styles
+                        style.textContent = `
+                            ::highlight(bolder-darken) {
+                                background-color: ${currentSettings.bolderDarkenBg};
+                                color: inherit;
+                                text-decoration: none;
+                            }
+                            ::highlight(bolder-lighten) {
+                                background-color: ${currentSettings.bolderLightenBg};
+                                color: inherit;
+                                text-decoration: none;
+                            }
+                        `;
+                    }
 
                     const newEnabled = checkEnabled(currentSettings);
                     if (newEnabled !== isEnabled) {

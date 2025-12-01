@@ -22,7 +22,26 @@ h1 {
 }
 
 .section {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+}
+
+.setting-row {
+    margin-bottom: 10px;
+}
+
+.setting-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.setting-row input[type="text"],
+.setting-row input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
 label {
