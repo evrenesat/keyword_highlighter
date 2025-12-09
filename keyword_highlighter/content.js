@@ -75,7 +75,7 @@
                 minUppercaseLen: 2,
                 minCapitalizedLen: 3,
                 minWordsInBlock: currentSettings.minWordsInBlock,
-                terminators: new Set(['.', '!', '?', '…', ':', ';']),
+                terminators: new Set(['.', '!', '?', '…', ':', ';', '-', '–', '—', '•', '●', '*', '■']),
                 blockTags: new Set([
                     'DIV', 'P', 'LI', 'TD', 'TH', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
                     'HEADER', 'FOOTER', 'SECTION', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'FIGCAPTION',
@@ -379,6 +379,8 @@
                         currentOffset += token.length;
                         return;
                     }
+
+
 
                     const isBlockStart = isBlockStartNode;
                     if (isBlockStart) {
