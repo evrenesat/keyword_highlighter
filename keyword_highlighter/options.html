@@ -48,6 +48,16 @@
                     <span id="bolderLightenOpacityVal" title="Opacity value"></span>
                 </div>
             </div>
+            <div class="setting-row">
+                <label for="customHighlights">Custom Highlighting (color: keywords)</label>
+                <p class="help-text">Format: one color per line. Comma separated keywords.<br>
+                    Example:<br>
+                    yellow: python,CI/CD<br>
+                    #ff0000: error,fail
+                </p>
+                <textarea id="customHighlights" rows="6"
+                    placeholder="yellow: python,CI/CD&#10;#cccccc: AI,ML"></textarea>
+            </div>
         </div>
 
         <div id="status"></div>

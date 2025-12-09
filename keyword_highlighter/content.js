@@ -34,7 +34,8 @@
         siteList: [],
         minWordsInBlock: 10,
         bolderDarkenBg: 'rgba(0, 0, 0, 0.1)',
-        bolderLightenBg: 'rgba(255, 255, 255, 0.25)'
+        bolderLightenBg: 'rgba(255, 255, 255, 0.25)',
+        customHighlights: ''
     };
 
     let isEnabled = false;
@@ -99,23 +100,81 @@
             CSS.highlights.set('bolder-darken', highlightDarken);
             CSS.highlights.set('bolder-lighten', highlightLighten);
 
+            // --- Custom Highlights Setup ---
+            let customRules = []; // Array of { regex, highlightName }
+
+            function updateCustomRules() {
+                // Clear old custom highlights from CSS registry if any? 
+                // We'll just overwrite them or keys will be reused.
+                // But we need to cleanup activeRanges that use old custom rules?
+                // For now, let's just parse.
+                customRules = [];
+                const lines = currentSettings.customHighlights.split('\n');
+                let ruleIndex = 0;
+
+                lines.forEach(line => {
+                    const parts = line.split(':');
+                    if (parts.length < 2) return;
+
+                    const color = parts[0].trim();
+                    const keywords = parts[1].split(',').map(k => k.trim()).filter(k => k);
+                    if (!keywords.length) return;
+
+                    const highlightName = `bolder-custom-${ruleIndex++}`;
+                    const highlight = new Highlight();
+                    highlight.priority = 1; // Prioritize custom highlights over default bionic reading
+                    CSS.highlights.set(highlightName, highlight);
+
+                    // Create CSS rule
+                    // We need to append or update style block. 
+                    // Let's rely on a separate style update function or append here.
+
+                    // Regex construction: case-insensitive, whole word
+                    // escaped keywords
+                    const pattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+                    const regex = new RegExp(`\\b(${pattern})\\b`, 'gi');
+
+                    customRules.push({
+                        regex,
+                        highlightName,
+                        color
+                    });
+                });
+            }
+            updateCustomRules();
+
             // Track which registry a range belongs to for cleanup
             const activeRanges = new Map(); // Map<Range, Highlight>
 
             // --- CSS Injection ---
             const style = document.createElement('style');
-            style.textContent = `
-            ::highlight(bolder-darken) {
-                background-color: ${currentSettings.bolderDarkenBg}; /* Darken tint for light backgrounds */
-                color: inherit;
-                text-decoration: none;
+
+            function updateStyles() {
+                let css = `
+                    ::highlight(bolder-darken) {
+                        background-color: ${currentSettings.bolderDarkenBg}; /* Darken tint for light backgrounds */
+                        color: inherit;
+                        text-decoration: none;
+                    }
+                    ::highlight(bolder-lighten) {
+                        background-color: ${currentSettings.bolderLightenBg}; /* Lighten tint for dark backgrounds */
+                        color: inherit;
+                        text-decoration: none;
+                    }
+                `;
+
+                customRules.forEach(rule => {
+                    css += `
+                        ::highlight(${rule.highlightName}) {
+                            background-color: ${rule.color};
+                            color: inherit;
+                        }
+                    `;
+                });
+
+                style.textContent = css;
             }
-            ::highlight(bolder-lighten) {
-                background-color: ${currentSettings.bolderLightenBg}; /* Lighten tint for dark backgrounds */
-                color: inherit;
-                text-decoration: none;
-            }
-        `;
+            updateStyles();
             document.head.appendChild(style);
 
             // --- Color Helpers ---
@@ -273,6 +332,23 @@
                     }
                 }
 
+                // Apply Custom Highlights
+                customRules.forEach(rule => {
+                    let match;
+                    rule.regex.lastIndex = 0; // Reset regex
+                    while ((match = rule.regex.exec(text)) !== null) {
+                        const range = new Range();
+                        range.setStart(textNode, match.index);
+                        range.setEnd(textNode, match.index + match[0].length);
+
+                        const registry = CSS.highlights.get(rule.highlightName);
+                        if (registry) {
+                            registry.add(range);
+                            activeRanges.set(range, registry);
+                        }
+                    }
+                });
+
                 // Tokenize
                 const tokens = text.split(/([.!?…:;]|\s+|[^a-zA-Z\-.!?…:;\s]+)/).filter(t => t);
 
@@ -418,23 +494,18 @@
                             traverse(document.body);
                         }
                     }
-                    if (changes.bolderDarkenBg || changes.bolderLightenBg) {
-                        if (changes.bolderDarkenBg) currentSettings.bolderDarkenBg = changes.bolderDarkenBg.newValue;
-                        if (changes.bolderLightenBg) currentSettings.bolderLightenBg = changes.bolderLightenBg.newValue;
+                    if (changes.bolderDarkenBg) currentSettings.bolderDarkenBg = changes.bolderDarkenBg.newValue;
+                    if (changes.bolderLightenBg) currentSettings.bolderLightenBg = changes.bolderLightenBg.newValue;
+                    updateStyles();
 
-                        // Update styles
-                        style.textContent = `
-                            ::highlight(bolder-darken) {
-                                background-color: ${currentSettings.bolderDarkenBg};
-                                color: inherit;
-                                text-decoration: none;
-                            }
-                            ::highlight(bolder-lighten) {
-                                background-color: ${currentSettings.bolderLightenBg};
-                                color: inherit;
-                                text-decoration: none;
-                            }
-                        `;
+                    if (changes.customHighlights) {
+                        currentSettings.customHighlights = changes.customHighlights.newValue;
+                        cleanupHighlights(); // Remove all old highlights
+                        updateCustomRules(); // Parse new rules
+                        updateStyles();      // Update CSS
+                        if (isEnabled) {
+                            traverse(document.body);
+                        }
                     }
 
                     const newEnabled = checkEnabled(currentSettings);
