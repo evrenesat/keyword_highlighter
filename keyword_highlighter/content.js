@@ -71,7 +71,7 @@
 
             console.log('Bolder: CSS Custom Highlight API is supported.');
 
-            // --- Configuration ---
+            // --- Configuration --- 
             const CONFIG = {
                 minUppercaseLen: 2,
                 minCapitalizedLen: 3,
@@ -285,6 +285,7 @@
             }
 
             function processRetroactive(word) {
+                // word comes from registry, so it is lowercase
                 if (skippedCandidates.has(word)) {
                     const candidates = skippedCandidates.get(word);
                     candidates.forEach(cand => {
@@ -312,11 +313,16 @@
                     const list = data[registryStorageKey] || [];
                     // Merge loaded list into existing registry
                     list.forEach(word => {
-                        if (!registry.has(word)) {
-                            registry.add(word);
+                        const lowerWord = word.toLowerCase();
+
+                        if (!registry.has(lowerWord)) {
+                            registry.add(lowerWord);
                         }
                         // CRITICAL: Check if we skipped this word while waiting for load
-                        processRetroactive(word);
+                        // So we should iterate skippedCandidates? Or store skippedCandidates with lowercase keys?
+                        // Storing lowercase keys seems 1:N mapping (one key "make" -> "Make", "MAKE").
+                        // Let's change skippedCandidates to Map<lowercaseWord, Array<...>>
+                        processRetroactive(lowerWord);
                     });
 
                     if (registry.size > registryMaxSize) {
@@ -343,9 +349,10 @@
 
             function addToRegistry(word) {
                 if (!registryStorageKey) return;
-                if (registry.has(word)) return;
+                const lowerWord = word.toLowerCase(); // Store lowercase for case-insensitive matching
+                if (registry.has(lowerWord)) return;
 
-                registry.add(word);
+                registry.add(lowerWord);
                 if (registry.size > registryMaxSize) {
                     // Primitive FIFO: delete first item
                     const first = registry.values().next().value;
@@ -436,7 +443,11 @@
 
                 // Check word count of the block
                 let minWords = CONFIG.minWordsInBlock;
-                if (blockParent.tagName === 'LI' || blockParent.tagName === 'TD') {
+                const bulletChars = new Set(['-', '–', '—', '•', '●', '*', '■']);
+                const textContent = blockParent.innerText || '';
+                const firstChar = textContent.trim()[0];
+
+                if (blockParent.tagName === 'LI' || blockParent.tagName === 'TD' || bulletChars.has(firstChar)) {
                     minWords = 3;
                 }
 
@@ -542,10 +553,12 @@
                         addToRegistry(token);
 
                         // Retroactive: Check if we skipped this word earlier
-                        processRetroactive(token);
+                        // processRetroactive expects lowercase key
+                        processRetroactive(token.toLowerCase());
                     } else if (isSentenceStart || isBlockStart) {
                         // Check if it's in registry
-                        if (registry.has(token)) {
+                        const lowerToken = token.toLowerCase();
+                        if (registry.has(lowerToken)) {
                             const range = new Range();
                             range.setStart(textNode, currentOffset);
                             range.setEnd(textNode, currentOffset + token.length);
@@ -556,10 +569,11 @@
                             // Only if it *would* be highlighted if it wasn't at start
                             // Re-check criteria (uppercase, capitalized etc)
                             if (RE_UPPERCASE.test(token) || RE_CAPITALIZED.test(token) || RE_MIXED_CASE.test(token) || RE_HYPHENATED.test(token)) {
-                                if (!skippedCandidates.has(token)) {
-                                    skippedCandidates.set(token, []);
+                                const lowerToken = token.toLowerCase();
+                                if (!skippedCandidates.has(lowerToken)) {
+                                    skippedCandidates.set(lowerToken, []);
                                 }
-                                skippedCandidates.get(token).push({
+                                skippedCandidates.get(lowerToken).push({
                                     node: textNode,
                                     offset: currentOffset,
                                     length: token.length

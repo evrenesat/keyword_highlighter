@@ -98,3 +98,24 @@ document.getElementById('registryConfig').addEventListener('input', saveOptions)
         saveOptions();
     });
 });
+
+document.getElementById('clearRegistry').addEventListener('click', () => {
+    browser.storage.local.get(null).then((items) => {
+        const keysToRemove = Object.keys(items).filter(key => key.startsWith('bolder_registry_'));
+        if (keysToRemove.length > 0) {
+            browser.storage.local.remove(keysToRemove).then(() => {
+                const status = document.getElementById('status');
+                status.textContent = `Cleared ${keysToRemove.length} registry entries.`;
+                setTimeout(() => {
+                    status.textContent = '';
+                }, 1500);
+            });
+        } else {
+            const status = document.getElementById('status');
+            status.textContent = 'No registries found to clear.';
+            setTimeout(() => {
+                status.textContent = '';
+            }, 1500);
+        }
+    });
+});
