@@ -355,10 +355,22 @@
                 let isBlockStartNode = isFirstWordInBlock(textNode, blockParent);
                 let currentOffset = 0;
 
-                tokens.forEach(token => {
+                tokens.forEach((token, i) => {
                     if (CONFIG.terminators.has(token)) {
-                        atSentenceStart = true;
-                        isBlockStartNode = false;
+                        let isAbbreviation = false;
+                        if (token === '.') {
+                            // Check for common abbreviations to avoid resetting sentence start
+                            // e.g. (e . g .) -> look back 3
+                            if (i >= 3 && tokens[i - 1] === 'g' && tokens[i - 2] === '.' && tokens[i - 3] === 'e') isAbbreviation = true;
+                            else if (i >= 3 && tokens[i - 1] === 'e' && tokens[i - 2] === '.' && tokens[i - 3] === 'i') isAbbreviation = true;
+                            // etc. vs. ex. (word .) -> look back 1
+                            else if (i >= 1 && ['etc', 'vs', 'ex', 'approx'].includes(tokens[i - 1].toLowerCase())) isAbbreviation = true;
+                        }
+
+                        if (!isAbbreviation) {
+                            atSentenceStart = true;
+                            isBlockStartNode = false;
+                        }
                         currentOffset += token.length;
                         return;
                     }
