@@ -35,7 +35,8 @@
         minWordsInBlock: 10,
         bolderDarkenBg: 'rgba(0, 0, 0, 0.1)',
         bolderLightenBg: 'rgba(255, 255, 255, 0.25)',
-        customHighlights: ''
+        customHighlights: '',
+        registryConfig: '1000: *.*'
     };
 
     let isEnabled = false;
@@ -228,6 +229,135 @@
             // --- State Management ---
             let atSentenceStart = true;
 
+            // --- Registry Management ---
+            let registry = new Set();
+            let registryMaxSize = 1000;
+            let registryStorageKey = null;
+            let skippedCandidates = new Map(); // Map<word, Array<{node, offset, length}>>
+
+            function parseRegistryConfig() {
+                const hostname = window.location.hostname;
+                const lines = currentSettings.registryConfig.split('\n');
+                let matched = false;
+
+                for (const line of lines) {
+                    const parts = line.split(':');
+                    if (parts.length < 2) continue;
+                    const size = parseInt(parts[0].trim(), 10) || 1000;
+                    const domains = parts[1].split(',').map(d => d.trim());
+
+                    // Check if current hostname includes any of the specified domains
+                    if (domains.some(d => hostname.includes(d))) {
+                        registryMaxSize = size;
+                        registryStorageKey = `bolder_registry_${hostname}`; // We use hostname for key to separate subdomains if needed, or we could use the matched domain?
+                        // User requested per domain registry.
+                        // If user configures "evren.io", and we obey, we should probably use "evren.io" as key part?
+                        // But if multiple domains map to same key?
+                        // "maxKeywordSize: domain1.com, domain2.com"
+                        // This syntax usually implies separate limits/rules. 
+                        // But if they share a line, do they share a registry? 
+                        // "This per domain keyword registry..."
+                        // Let's assume unique key per hostname for safety, OR unique key per matched config rule?
+                        // "1000: *.*" -> one global registry.
+                        // "1000: a.com, b.com" -> do they share?
+                        // The user said: "This configuration can bi similar to "customHighlights" textbox... maxKeywordSize: domain1.com, domain2.com"
+                        // If I use `hostname` as key, then `a.com` and `b.com` get separate keys: `bolder_registry_a.com` and `bolder_registry_b.com`.
+                        // This seems correct for "per domain".
+
+                        registryStorageKey = `bolder_registry_${hostname}`;
+                        matched = true;
+                        break;
+                    }
+                }
+
+                if (!matched) {
+                    // Check for global fallback *.*
+                    for (const line of lines) {
+                        if (line.includes('*.*')) {
+                            const size = parseInt(line.split(':')[0].trim(), 10) || 1000;
+                            registryMaxSize = size;
+                            registryStorageKey = `bolder_registry_global`;
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            function processRetroactive(word) {
+                if (skippedCandidates.has(word)) {
+                    const candidates = skippedCandidates.get(word);
+                    candidates.forEach(cand => {
+                        if (cand.node.isConnected) {
+                            const range = new Range();
+                            range.setStart(cand.node, cand.offset);
+                            range.setEnd(cand.node, cand.offset + cand.length);
+
+                            let candRegistry = highlightDarken;
+                            if (cand.node.parentElement) {
+                                if (isLightBackground(cand.node.parentElement)) candRegistry = highlightDarken;
+                                else candRegistry = highlightLighten;
+                            }
+                            candRegistry.add(range);
+                            activeRanges.set(range, candRegistry);
+                        }
+                    });
+                    skippedCandidates.delete(word);
+                }
+            }
+
+            function loadRegistry() {
+                if (!registryStorageKey) return;
+                storageGet(registryStorageKey).then(data => {
+                    const list = data[registryStorageKey] || [];
+                    // Merge loaded list into existing registry
+                    list.forEach(word => {
+                        if (!registry.has(word)) {
+                            registry.add(word);
+                        }
+                        // CRITICAL: Check if we skipped this word while waiting for load
+                        processRetroactive(word);
+                    });
+
+                    if (registry.size > registryMaxSize) {
+                        const excess = registry.size - registryMaxSize;
+                        const arr = Array.from(registry);
+                        const keep = arr.slice(excess);
+                        registry = new Set(keep);
+                    }
+                }).catch(err => console.error('Bolder: Registry load failed', err));
+            }
+
+            // Debounced save
+            let saveTimeout;
+            function saveRegistry() {
+                if (!registryStorageKey) return;
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    const list = Array.from(registry);
+                    let saveData = {};
+                    saveData[registryStorageKey] = list;
+                    browser.storage.local.set(saveData);
+                }, 1000);
+            }
+
+            function addToRegistry(word) {
+                if (!registryStorageKey) return;
+                if (registry.has(word)) return;
+
+                registry.add(word);
+                if (registry.size > registryMaxSize) {
+                    // Primitive FIFO: delete first item
+                    const first = registry.values().next().value;
+                    registry.delete(first);
+                }
+                saveRegistry();
+            }
+
+            parseRegistryConfig();
+            loadRegistry();
+
+
             // --- Helper Functions ---
 
             function isBlockElement(node) {
@@ -405,6 +535,37 @@
                         range.setEnd(textNode, currentOffset + token.length);
                         targetRegistry.add(range);
                         activeRanges.set(range, targetRegistry);
+
+                        // If it's a valid keyword (long enough etc), add to registry for future start-of-sentence highlighting
+                        // We use the same regex/logic as the check "shouldBold" used.
+                        // Assuming shouldBold implies it met the criteria.
+                        addToRegistry(token);
+
+                        // Retroactive: Check if we skipped this word earlier
+                        processRetroactive(token);
+                    } else if (isSentenceStart || isBlockStart) {
+                        // Check if it's in registry
+                        if (registry.has(token)) {
+                            const range = new Range();
+                            range.setStart(textNode, currentOffset);
+                            range.setEnd(textNode, currentOffset + token.length);
+                            targetRegistry.add(range);
+                            activeRanges.set(range, targetRegistry);
+                        } else {
+                            // Candidate for retroactive highlighting
+                            // Only if it *would* be highlighted if it wasn't at start
+                            // Re-check criteria (uppercase, capitalized etc)
+                            if (RE_UPPERCASE.test(token) || RE_CAPITALIZED.test(token) || RE_MIXED_CASE.test(token) || RE_HYPHENATED.test(token)) {
+                                if (!skippedCandidates.has(token)) {
+                                    skippedCandidates.set(token, []);
+                                }
+                                skippedCandidates.get(token).push({
+                                    node: textNode,
+                                    offset: currentOffset,
+                                    length: token.length
+                                });
+                            }
+                        }
                     }
 
                     currentOffset += token.length;
@@ -520,6 +681,16 @@
                         if (isEnabled) {
                             traverse(document.body);
                         }
+                    }
+                    if (changes.registryConfig) {
+                        currentSettings.registryConfig = changes.registryConfig.newValue;
+                        parseRegistryConfig();
+                        loadRegistry();
+                        // If registry changes, we might want to re-traverse to apply new registry words?
+                        // Or just let it apply on next page load / dynamically?
+                        // Let's re-traverse to be safe and responsive.
+                        cleanupHighlights();
+                        traverse(document.body);
                     }
 
                     const newEnabled = checkEnabled(currentSettings);

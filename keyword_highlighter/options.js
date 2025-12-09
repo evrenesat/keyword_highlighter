@@ -4,7 +4,8 @@ const defaultSettings = {
     minWordsInBlock: 10,
     bolderDarkenBg: 'rgba(0, 0, 0, 0.1)',
     bolderLightenBg: 'rgba(255, 255, 255, 0.25)',
-    customHighlights: ''
+    customHighlights: '',
+    registryConfig: '1000: *.*'
 };
 
 function rgbaToHexOpacity(rgba) {
@@ -52,7 +53,8 @@ function saveOptions() {
         minWordsInBlock,
         bolderDarkenBg,
         bolderLightenBg,
-        customHighlights: document.getElementById('customHighlights').value
+        customHighlights: document.getElementById('customHighlights').value,
+        registryConfig: document.getElementById('registryConfig').value
     }).then(() => {
         const status = document.getElementById('status');
         status.textContent = 'Options saved.';
@@ -68,6 +70,7 @@ function restoreOptions() {
         document.getElementById('siteList').value = result.siteList.join('\n');
         document.getElementById('minWordsInBlock').value = result.minWordsInBlock;
         document.getElementById('customHighlights').value = result.customHighlights || '';
+        document.getElementById('registryConfig').value = result.registryConfig || '1000: *.*';
 
         const darken = rgbaToHexOpacity(result.bolderDarkenBg);
         document.getElementById('bolderDarkenColor').value = darken.hex;
@@ -86,6 +89,7 @@ document.getElementById('defaultEnabled').addEventListener('change', saveOptions
 document.getElementById('siteList').addEventListener('input', saveOptions);
 document.getElementById('minWordsInBlock').addEventListener('input', saveOptions);
 document.getElementById('customHighlights').addEventListener('input', saveOptions);
+document.getElementById('registryConfig').addEventListener('input', saveOptions);
 
 ['bolderDarken', 'bolderLighten'].forEach(prefix => {
     document.getElementById(`${prefix}Color`).addEventListener('input', saveOptions);

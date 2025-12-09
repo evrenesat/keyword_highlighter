@@ -58,6 +58,15 @@
                 <textarea id="customHighlights" rows="6"
                     placeholder="yellow: python,CI/CD&#10;#cccccc: AI,ML"></textarea>
             </div>
+            <div class="setting-row">
+                <label for="registryConfig">Keyword Registry (Max Size: Domains)</label>
+                <p class="help-text">Effect: Persistently tracks keywords per domain to highlight them even at sentence
+                    starts.<br>
+                    Format: `size: domain1, domain2` or `size: *.*` for all sites.<br>
+                    Default: `1000: *.*`
+                </p>
+                <textarea id="registryConfig" rows="2" placeholder="1000: *.*"></textarea>
+            </div>
         </div>
 
         <div id="status"></div>
