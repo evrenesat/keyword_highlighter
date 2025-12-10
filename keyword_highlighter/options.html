@@ -73,8 +73,27 @@
                     Format: `size: domain1, domain2` or `size: *.*` for all sites.<br>
                     Default: `1000: *.*`
                 </p>
-                <textarea id="registryConfig" rows="2" placeholder="1000: *.*"></textarea>
-                <button id="clearRegistry" style="margin-top: 5px;">Clear All Registries</button>
+                <textarea id="registryConfig" rows="6" placeholder="1000: *.*&#10;500: example.com"></textarea>
+                <div style="text-align: right; margin-top: 5px;">
+                    <button id="clearRegistries" class="secondary-button"
+                        style="padding: 4px 8px; font-size: 0.85em;">Clear All Registries</button>
+                    <span id="clearStatus"
+                        style="margin-left: 10px; font-size: 0.85em; color: green; opacity: 0; transition: opacity 0.5s;">Cleared!</span>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label for="excludedTagsConfig">Excluded Tags (domain: tags)</label>
+                <p class="help-text">Define which HTML tags to skip for highlighting. The extension finds the best match
+                    for the current domain.<br>
+                    Default: <code>*.*: SCRIPT, STYLE, NOSCRIPT...</code><br>
+                    Example: <code>evren.io: SCRIPT, A</code> (Only skip script and links on evren.io)
+                </p>
+                <textarea id="excludedTagsConfig" rows="6"
+                    placeholder="*.*: SCRIPT,STYLE,A&#10;example.com: SCRIPT"></textarea>
+                <div style="text-align: right; margin-top: 5px;">
+                    <button id="resetExcludedTags" class="secondary-button"
+                        style="padding: 4px 8px; font-size: 0.85em;">Reset to Defaults</button>
+                </div>
             </div>
         </div>
 

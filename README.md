@@ -41,6 +41,7 @@ You can access the configuration page by right-clicking the extension icon and s
     *   **Custom Highlights**: Define specific color rules for keywords (e.g., `#ff0000: error, fail`).
     *   **Disable Automatic Highlighting**: Option to strictly use only custom highlights, disabling all heuristic-based detection.
     *   **Keyword Registry**: Configure the persistent registry (e.g., `1000: *.*` for a global 1000-word registry). Includes a "Clear All" button to reset data.
+    *   **Excluded Tags**: Configure which HTML tags are skipped during highlighting (e.g., `*.*: SCRIPT, STYLE, A`). Supports per-domain configuration (e.g., `example.com: SCRIPT`).
 
 ## Installation
 

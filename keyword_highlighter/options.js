@@ -1,3 +1,5 @@
+const DEFAULT_EXCLUDED_TAGS_CONFIG = `*.*: SCRIPT, STYLE, NOSCRIPT, TEXTAREA, INPUT, SELECT, OPTION, CODE, PRE, IFRAME, SVG, CANVAS, KBD, VAR, A`;
+
 const defaultSettings = {
     defaultEnabled: true,
     siteList: [],
@@ -48,32 +50,51 @@ function saveOptions() {
         document.getElementById('bolderLightenOpacity').value
     );
 
+    const excludedTagsInput = document.getElementById('excludedTagsConfig').value;
+
+    // Validation: Ensure *.* exists
+    // Simple check: does it contain "*.*:" or "*.* :"
+    // We can be a bit more robust or just simple string check.
+    // Let's rely on simple string check for now.
+    if (!excludedTagsInput.includes('*.*')) {
+        const confirmed = confirm('Warning: Your excluded tags configuration is missing the global wildcard (*.*). This might cause unexpected behavior on undefined sites. Are you sure you want to save?');
+        if (!confirmed) {
+            return; // Abort save
+        }
+    }
+
+    const customHighlights = document.getElementById('customHighlights').value;
+    const registryConfig = document.getElementById('registryConfig').value;
+    const disableAutoDetect = document.getElementById('disableAutoDetect').checked;
+
     browser.storage.local.set({
         defaultEnabled,
         siteList,
         minWordsInBlock,
         bolderDarkenBg,
         bolderLightenBg,
-        customHighlights: document.getElementById('customHighlights').value,
-        disableAutoDetect: document.getElementById('disableAutoDetect').checked,
-        registryConfig: document.getElementById('registryConfig').value
+        customHighlights,
+        disableAutoDetect,
+        registryConfig,
+        excludedTagsConfig: excludedTagsInput
     }).then(() => {
         const status = document.getElementById('status');
         status.textContent = 'Options saved.';
         setTimeout(() => {
             status.textContent = '';
-        }, 1500);
+        }, 750);
     });
 }
 
 function restoreOptions() {
     browser.storage.local.get(defaultSettings).then((result) => {
-        document.getElementById('defaultEnabled').checked = result.defaultEnabled;
+        document.getElementById('defaultEnabled').checked = result.defaultEnabled || false;
         document.getElementById('siteList').value = result.siteList.join('\n');
         document.getElementById('minWordsInBlock').value = result.minWordsInBlock;
         document.getElementById('customHighlights').value = result.customHighlights || '';
         document.getElementById('disableAutoDetect').checked = result.disableAutoDetect || false;
         document.getElementById('registryConfig').value = result.registryConfig || '1000: *.*';
+        document.getElementById('excludedTagsConfig').value = result.excludedTagsConfig || DEFAULT_EXCLUDED_TAGS_CONFIG;
 
         const darken = rgbaToHexOpacity(result.bolderDarkenBg);
         document.getElementById('bolderDarkenColor').value = darken.hex;
@@ -94,6 +115,12 @@ document.getElementById('minWordsInBlock').addEventListener('input', saveOptions
 document.getElementById('customHighlights').addEventListener('input', saveOptions);
 document.getElementById('disableAutoDetect').addEventListener('change', saveOptions);
 document.getElementById('registryConfig').addEventListener('input', saveOptions);
+document.getElementById('excludedTagsConfig').addEventListener('input', saveOptions);
+
+document.getElementById('resetExcludedTags').addEventListener('click', () => {
+    document.getElementById('excludedTagsConfig').value = DEFAULT_EXCLUDED_TAGS_CONFIG;
+    saveOptions();
+});
 
 ['bolderDarken', 'bolderLighten'].forEach(prefix => {
     document.getElementById(`${prefix}Color`).addEventListener('input', saveOptions);

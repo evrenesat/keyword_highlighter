@@ -37,7 +37,8 @@
         bolderLightenBg: 'rgba(255, 255, 255, 0.25)',
         customHighlights: '',
         disableAutoDetect: false,
-        registryConfig: '1000: *.*'
+        registryConfig: '1000: *.*',
+        excludedTagsConfig: '*.*: SCRIPT, STYLE, NOSCRIPT, TEXTAREA, INPUT, SELECT, OPTION, CODE, PRE, IFRAME, SVG, CANVAS, KBD, VAR, A'
     };
 
     let isEnabled = false;
@@ -83,12 +84,66 @@
                     'HEADER', 'FOOTER', 'SECTION', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'FIGCAPTION',
                     'STRONG', 'B'
                 ]),
-                excludedTags: new Set([
+                excludedTags: new Set(),
+                excludedAttrs: ['contenteditable']
+            };
+
+            function parseExcludedTagsConfig() {
+                const configStr = currentSettings.excludedTagsConfig;
+                if (!configStr) {
+                    // Fallback default
+                    CONFIG.excludedTags = new Set([
+                        'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION',
+                        'CODE', 'PRE', 'IFRAME', 'SVG', 'CANVAS', 'KBD', 'VAR', 'A'
+                    ]);
+                    return;
+                }
+
+                const lines = configStr.split('\n');
+                const hostname = window.location.hostname;
+                let bestMatch = null;
+                let bestMatchLen = -1;
+
+                lines.forEach(line => {
+                    const parts = line.split(':');
+                    if (parts.length < 2) return;
+
+                    const domain = parts[0].trim();
+                    // Calculate match specificity
+                    let matchLen = 0;
+                    if (domain === '*.*') {
+                        matchLen = 0; // Lowest priority
+                    } else if (hostname === domain || hostname.endsWith('.' + domain)) {
+                        matchLen = domain.length; // Priority by length
+                    } else {
+                        return; // No match
+                    }
+
+                    // If this match is better (more specific) than previous best
+                    if (matchLen > bestMatchLen || bestMatch === null) {
+                        bestMatchLen = matchLen;
+                        bestMatch = parts[1];
+                    }
+                });
+
+                if (bestMatch) {
+                    const tags = bestMatch.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
+                    CONFIG.excludedTags = new Set(tags);
+                } else {
+                    // Should theoretically not happen if *.* exists, but good safety
+                    // If no match, maybe empty set? or default?
+                    // Plan said "use that tag list". If no match found, use empty set (nothing excluded).
+                    CONFIG.excludedTags = new Set();
+                }
+            }
+            parseExcludedTagsConfig();
+
+            /*
+                 excludedTags: new Set([
                     'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION',
                     'CODE', 'PRE', 'IFRAME', 'SVG', 'CANVAS', 'KBD', 'VAR', 'A'
                 ]),
-                excludedAttrs: ['contenteditable']
-            };
+            */
 
             // --- Regex ---
             const RE_UPPERCASE = new RegExp(`^\\b[A-Z]{${CONFIG.minUppercaseLen},}\\b$`);
@@ -726,6 +781,13 @@
                             currentSettings.registryConfig = changes.registryConfig.newValue;
                             parseRegistryConfig();
                             loadRegistry();
+                            needsCleanup = true;
+                            needsTraverse = true;
+                        }
+
+                        if (changes.excludedTagsConfig) {
+                            currentSettings.excludedTagsConfig = changes.excludedTagsConfig.newValue;
+                            parseExcludedTagsConfig();
                             needsCleanup = true;
                             needsTraverse = true;
                         }
